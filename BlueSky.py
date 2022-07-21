@@ -1,20 +1,12 @@
 #!/usr/bin/env python
 """ Main BlueSky start script """
-from __future__ import print_function
 import sys
-import traceback
-import bluesky as bs
-import pygame
-pygame.init()
+from bluesky.__main__ import main
 
-# Create custom system-wide exception handler. For now it replicates python's
-# default traceback message. This was added to counter a new PyQt5.5 feature
-# where unhandled exceptions would result in a qFatal with a very uninformative
-# message.
-def exception_handler(exc_type, exc_value, exc_traceback):
-    traceback.print_exception(exc_type, exc_value, exc_traceback)
-    sys.exit()
 
+if __name__ == "__main__":
+    # Run mainloop if BlueSky is called directly
+    sys.exit(main())
 
 sys.excepthook = exception_handler
 
