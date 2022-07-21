@@ -1,6 +1,6 @@
 ''' BlueSky base stack commands. '''
 import webbrowser
-import os
+from pathlib import Path
 
 import bluesky as bs
 from bluesky import settings
@@ -178,7 +178,7 @@ def initbasecmds():
             bs.navdb.defwpt,
             "Define a waypoint only for this scenario/run",
         ],
-               "DEL": [
+        "DEL": [
             "DEL acid/ALL/WIND/shape",
             "acid/txt,...",
             lambda *a: bs.traf.wind.clear()
@@ -482,11 +482,12 @@ def setscenpath(newpath):
     if not newpath:
         return False, "Needs an absolute or relative path"
 
+    newpath = Path(newpath)
     # If this is a relative path we need to prefix scenario folder
-    if not os.path.isabs(newpath):
-        newpath = os.path.join(settings.scenario_path, newpath)
+    if not newpath.is_absolute():
+        newpath = settings.resolve_path(settings.scenario_path) / newpath
 
-    if not os.path.exists(newpath):
+    if not newpath.is_dir():
         return False, "Error: cannot find path: " + newpath
 
     # Change path

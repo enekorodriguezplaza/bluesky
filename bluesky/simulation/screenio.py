@@ -5,7 +5,7 @@ import numpy as np
 # Local imports
 import bluesky as bs
 from bluesky import stack
-from bluesky.tools import areafilter
+from bluesky.tools import areafilter, aero
 from bluesky.core.walltime import Timer
 
 class ScreenIO:
@@ -55,7 +55,7 @@ class ScreenIO:
         self.fast_timer.timeout.connect(self.send_aircraft_data)
         self.fast_timer.start(int(1000 / self.acupdate_rate))
 
-    def step(self):
+    def update(self):
         if bs.sim.state == bs.OP:
             self.samplecount += 1
 
@@ -268,6 +268,9 @@ class ScreenIO:
 
         # Transition level as defined in traf
         data['translvl']   = bs.traf.translvl
+
+        # Send casmachthr for route visualization
+        data['casmachthr']    = aero.casmach_thr
 
         # ASAS resolutions for visualization. Only send when evaluated
         data['asastas']  = bs.traf.cr.tas

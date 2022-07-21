@@ -7,10 +7,14 @@
    report: EEC Technical/Scientific Report No. 14/04/24-44. This report can be obtained here:
    https://www.eurocontrol.int/sites/default/files/field_tabs/content/documents/sesar/user-manual-bada-3-12.pdf
 '''
-from glob import glob
-from os import path
+from pathlib import Path
 import re
 from .fwparser import FixedWidthParser, ParseError
+from bluesky import settings
+
+
+settings.set_variable_defaults(perf_path_bada='data/performance/BADA')
+
 
 # File formats of BADA data files. Uses fortran-like notation
 # Adapted from the BADA manual format lines. (page 61-81 in the BADA manual)
@@ -86,14 +90,15 @@ def getCoefficients(actype):
     return syn, coeff
 
 
-def check(bada_path=''):
+def check():
     ''' Import check for BADA performance model. '''
-    releasefile = path.join(path.normpath(bada_path), 'ReleaseSummary')
-    if not path.isfile(releasefile):
-        return False
-    synonymfile = path.join(path.normpath(bada_path), 'SYNONYM.NEW')
-    if not path.isfile(synonymfile):
-        return False
+    base = settings.resolve_path(settings.perf_path_bada)
+    releasefile = base / 'ReleaseSummary'
+    if not releasefile.is_file():
+        raise ImportError(f'BADA performance model: Error trying to find BADA files in {base}!')
+    synonymfile = base / 'SYNONYM.NEW'
+    if not synonymfile.is_file():
+        raise ImportError(f'BADA performance model: Error trying to find BADA files in {base}!')
     return True
 
 
@@ -101,9 +106,9 @@ def init(bada_path=''):
     ''' init() loads the available BADA datafiles in the provided directory.'''
     if accoeffs:
         return True
-
-    releasefile = path.join(path.normpath(bada_path), 'ReleaseSummary')
-    if path.isfile(releasefile):
+    bada_path = settings.resolve_path(settings.perf_path_bada)
+    releasefile = bada_path / 'ReleaseSummary'
+    if releasefile.is_file():
         global release_date, bada_version
         re_reldate = re.compile(r'Summary Date:\s+(.+(?<!\s))\s*', re.IGNORECASE)
         re_badaver = re.compile(r'\s*BADA Release:\s+([\d.]+)\s*', re.IGNORECASE)
@@ -120,15 +125,15 @@ def init(bada_path=''):
     else:
         print('No BADA release summary found: can not determine version.')
 
-    synonymfile = path.join(path.normpath(bada_path), 'SYNONYM.NEW')
-    if not path.isfile(synonymfile):
+    synonymfile = bada_path / 'SYNONYM.NEW'
+    if not synonymfile.is_file():
         print('SYNONYM.NEW not found in BADA path, could not load BADA.')
         return False
 
     try:
         data = syn_parser.parse(synonymfile)
     except ParseError as e:
-        print('Error reading synonym file {} on line {}'.format(e.fname, e.lineno))
+        print(f'Error reading synonym file {e.fname} on line {e.lineno}')
         return False
 
     for line in data:
@@ -137,16 +142,16 @@ def init(bada_path=''):
     print('%d aircraft entries loaded' % len(synonyms))
 
     # Load aircraft coefficient data
-    for fname in glob(path.join(path.normpath(bada_path), '*.OPF')):
+    for fname in bada_path.glob('*.OPF'):
         ac = ACData()
         try:
             ac.setOPFData(opf_parser.parse(fname))
-
-            if path.isfile(fname[:-4] + '.APF'):
-                ac.setAPFData(apf_parser.parse(fname[:-4] + '.APF'))
+            apf = fname.with_suffix('.APF')
+            if apf.is_file():
+                ac.setAPFData(apf_parser.parse(apf))
 
         except ParseError as e:
-            print('Error reading {} on line {}'.format(e.fname, e.lineno))
+            print(f'Error reading {e.fname} on line {e.lineno}')
             ac = None
 
         if ac:

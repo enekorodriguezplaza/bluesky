@@ -1,6 +1,5 @@
 """ Implementation of BlueSky's plugin system. """
 import ast
-import glob
 
 from pathlib import Path
 import sys
@@ -51,8 +50,12 @@ class Plugin:
             if self.imp:
                 sys.modules[self.module_imp] = self.imp
             else:
-                self.imp = importlib.import_module(self.module_imp)
+                # self.imp = importlib.import_module(self.module_imp)
+                # sys.modules[self.module_name] = self.imp
+                spec = importlib.util.spec_from_file_location(self.module_name, Path(self.module_path) / (self.module_name + '.py'))
+                self.imp = importlib.util.module_from_spec(spec)
                 sys.modules[self.module_name] = self.imp
+                spec.loader.exec_module(self.imp)
 
             # Initialize the plugin
             result = self.imp.init_plugin()
@@ -97,7 +100,7 @@ class Plugin:
     @classmethod
     def find_plugins(cls, reqtype):
         ''' Create plugin wrapper objects based on source code of potential plug-in files. '''
-        for fname in Path(settings.plugin_path).glob('**/*.py'):
+        for fname in settings.resolve_path(settings.plugin_path).glob('**/*.py'):
             with open(fname, 'rb') as f:
                 source = f.read()
                 try:
@@ -157,7 +160,7 @@ class Plugin:
 def init(mode):
     ''' Initialization function of the plugin system.'''
     # Add plugin path to module search path
-    sys.path.append(Path(settings.plugin_path).absolute().as_posix())
+    sys.path.append(settings.resolve_path(settings.plugin_path).absolute().as_posix())
     # Set plugin type for this instance of BlueSky
     req_type = 'sim' if mode[:3] == 'sim' else 'gui'
     oth_type = 'gui' if mode[:3] == 'sim' else 'sim'
