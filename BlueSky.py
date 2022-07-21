@@ -4,6 +4,8 @@ from __future__ import print_function
 import sys
 import traceback
 import bluesky as bs
+import pygame
+pygame.init()
 
 # Create custom system-wide exception handler. For now it replicates python's
 # default traceback message. This was added to counter a new PyQt5.5 feature

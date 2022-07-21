@@ -149,6 +149,8 @@ class BADA(PerfBase):
             self.D           = np.array([])   # drag
             self.fuelflow    = np.array([])   # fuel flow
 
+            self.E           = np.array([])   # Work done E = T*distance_flown
+
             # ground
             self.tol         = np.array([])   # take-off length[m]
             self.ldl         = np.array([])   # landing length[m]
@@ -200,6 +202,7 @@ class BADA(PerfBase):
         self.mass[-n:]      = coeff.m_ref * 1000.0
         self.mmin[-n:]      = coeff.m_min * 1000.0
         self.mmax[-n:]      = coeff.m_max * 1000.0
+
 
         # self.mpyld = np.append(self.mpyld, coeff.mpyld[coeffidx]*1000)
         self.gw[-n:]        = coeff.mass_grad * ft
@@ -317,6 +320,8 @@ class BADA(PerfBase):
         self.D[-n:]         = 0.0
         self.fuelflow[-n:]  = 0.0
 
+        self.E[-n:]         = 0.0
+
         # ground
         self.tol[-n:]       = coeff.TOL
         self.ldl[-n:]       = coeff.LDL
@@ -330,20 +335,35 @@ class BADA(PerfBase):
         # BADA version
         swbada = True
         delalt = bs.traf.selalt - bs.traf.alt
+
         # flight phase
         self.phase, self.bank = phases(bs.traf.alt, bs.traf.gs, delalt,
             bs.traf.cas, self.vmto, self.vmic, self.vmap, self.vmcr, self.vmld,
             bs.traf.ap.bankdef, bs.traf.bphase, bs.traf.swhdgsel, swbada)
+
 
         # AERODYNAMICS
         # Lift
         qS = 0.5*bs.traf.rho*np.maximum(1.,bs.traf.tas)*np.maximum(1.,bs.traf.tas)*self.Sref
         cl = self.mass*g0/(qS*np.cos(self.bank))*(self.phase!=PHASE["GD"])+ 0.*(self.phase==PHASE["GD"])
 
+
+
+        #print('V:', bs.traf.tas) #m/s
+        #print('m', self.mass)
+        #print(g0)
+        #print('S',self.Sref)
+        #print('rho',bs.traf.rho)
+        #print('qS:', qS)
+        #print('cl',cl)
+        #print('cd0cr', self.cd0cr)
+        #print('cd2cr', self.cd2cr)
+
         # Drag
         # Drag Coefficient
 
         # phases TO, IC, CR
+
         cdph = self.cd0cr+self.cd2cr*(cl*cl)
 
         # phase AP
@@ -363,8 +383,10 @@ class BADA(PerfBase):
 
         # Drag:
         self.D = cd*qS
-
         # energy share factor and crossover altitude
+        #print('cd', cd)
+        #print('D', self.D)
+
 
         # conditions
         epsalt = np.array([0.001]*bs.traf.ntraf)
@@ -438,6 +460,7 @@ class BADA(PerfBase):
         # merge all thrust conditions
         T = np.maximum.reduce([Tjc, Ttc, Tpc, Tlvl, Tdesh, Tdeslc, Tdesla, Tdesll, Tgd])
 
+        #print('T',T)
 
         # vertical speed
         # vertical speed. Note: ISA only ( tISA = 1 )
@@ -470,6 +493,7 @@ class BADA(PerfBase):
         ej = etaj*self.jet
 
         # thrust specific fuel consumption - turboprop
+        #print( self.cf1, bs.traf.tas/kts, self.cf2)
 
         # thrust
         etat = self.cf1*(1.-(bs.traf.tas/kts)/self.cf2)*((bs.traf.tas/kts)/1000.)
@@ -479,6 +503,8 @@ class BADA(PerfBase):
         # thrust specific fuel consumption for all aircraft
         # eta is given in [kg/(min*kN)] - convert to [kg/(min*N)]
         eta = np.maximum.reduce([ej, et])/1000.
+
+        #print('eta:',eta)
 
         # nominal fuel flow - (jet & turbo) and piston
         # condition jet,turbo:
@@ -498,9 +524,13 @@ class BADA(PerfBase):
 
         # cruise fuel flow jet, turbo and piston
         fcrjt = eta*self.thrust*self.cf_cruise*jt
+        #print('cf_cr and jt', self.cf_cruise,jt)
         fcrp = self.cf1*self.cf_cruise*pdf
         #merge
         fcr = fcrjt + fcrp
+
+        #print(eta)
+        #print(self.thrust)
 
         # approach/landing fuel flow
         fal = np.maximum(fnom, fmin)
@@ -515,30 +545,37 @@ class BADA(PerfBase):
         # phase cruise and climb
         cc = np.logical_and.reduce([climb, (self.phase==PHASE['CR'])])*1
         ffcc = fnom*cc
+        #print('climb', climb)
+        #print('cc', cc)
+
 
         # cruise and level
         ffcrl = fcr*lvl
-
+        #print('ffcrl:',ffcrl/60)
+        #print('cruise and level', ffcrl/60) # this is the one for cruise, most likely
         # descent cruise configuration
         cd2 = np.logical_and.reduce ([descent, (self.phase==PHASE['CR'])])*1
         ffcd = cd2*fmin
 
         # approach
         ffap = fal*(self.phase==PHASE['AP'])
-
         # landing
         ffld = fal*(self.phase==PHASE['LD'])
-
         # ground
         ffgd = fmin*(self.phase==PHASE['GD'])
 
         # fuel flow for each condition
         self.fuelflow = np.maximum.reduce([ffto, ffic, ffcc, ffcrl, ffcd, ffap, ffld, ffgd])/60. # convert from kg/min to kg/sec
+        #print(ffto, ffic, ffcc, ffcrl, ffcd, ffap, ffld, ffgd)
+        #print('ff:',self.fuelflow)
 
         # update mass
+
         self.mass -= self.fuelflow * dt # Use fuelflow in kg/min
 
-
+        ## Energy for this step.
+        d_distance =bs.traf.tas * dt  # Step in distance = V*step in time   [m]
+        self.E = self.thrust *d_distance  # step in E (work done) = T*step in distance. This is logged by the SCN
 
         # for aircraft on the runway and taxiways we need to know, whether they
         # are prior or after their flight
