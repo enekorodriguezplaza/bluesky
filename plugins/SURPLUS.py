@@ -34,7 +34,7 @@ def init_plugin():
         }
     stackfunctions = {
         'PLAN': [
-            'PLAN ALPHA,CX,var1,[var2]',
+            'PLAN FUA,CX,var1,[var2]',
             '[string,string,float,float]',
             surplus.choose_plannability_csv,
             'Choose the concept of plannability'
