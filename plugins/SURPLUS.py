@@ -5,7 +5,10 @@ Once an aircraft is created, this list is checked and the corresponding surplus 
 Note: every flight adds some surplus fuel. If the surplus weight == 0: this is because the flight did not take a surplus fuel
 Once the surplus fuel is added, it remains for the rest of the simulation (core timed function)
 
-This script is also used for the validation part. For that, set val == True in the 2 corresponding IF statements
+This script is also used for the validation part. For that, set val == True, and use the command PLAN with any dummy argument, e.g. PLAN X and it will get the validation .csv
+
+Note: to run this plugin, 'surplus' must be added to the list of plugins in settings.cfg
+
 Author: Eneko Rodriguez
 """
 from random import randint
@@ -16,23 +19,23 @@ from bluesky import core, stack, traf, sim  #, settings, navdb, traf, sim, scr, 
 from bluesky.tools import datalog, areafilter
 from bluesky.core import Entity, timed_function
 from bluesky.tools.aero import ft,kts,nm,fpm
+import os
 import sys
 
+current_path = os.getcwd() # now it shows as the current path (\plugins), but when entering the code it becomes the parent
+
+val = False
 
 ### Initialization function of the plugin.
 def init_plugin():
     # Instantiate our ''surplus'' entity
     surplus = Surplus()
-
     # Configuration parameters
     config = {
-        # The name of your plugin
-        'plugin_name':     'surplus',
-
-        # The type of this plugin. For now, only simulation plugins are possible.
-        'plugin_type':     'sim'
+        'plugin_name':     'surplus', # name (must be added to the enabled_plugins list of settings.cfg
+        'plugin_type':     'sim' # This is a simulation plugin
         }
-    stackfunctions = {
+    stackfunctions = { # create the command PLAN. This is called from the scns to load a specific .csv file
         'PLAN': [
             'PLAN FUA,CX,var1,[var2]',
             '[string,string,float,float]',
@@ -52,13 +55,13 @@ class Surplus(core.Entity):
 
         global surplus_fuel_table
 
-        val = False    # True: do validation. False: do Experiment 2
+        #val = False    # True: do validation. False: do Experiment 2
+
         if val == True:
             print('Doing validation, not Experiment 2')
-            surplus_fuel_table = pd.read_csv(
-                r"C:\Users\rodri\Documents\GitHub\bluesky\plugins\surplus_fuels\val_mass.csv")
+            surplus_fuel_table = pd.read_csv( current_path +"\\plugins\\surplus_fuels\\val_mass.csv")
             # This csv contains the masses needed to be added so that BADA's m_ref matches the flight's weight from the ACMS data
-            print('surplus table found')
+            print('Surplus table found for validation')
 
         else:
             # the plan command must be input as PLAN FUA,CX,var1[,var2] without spaces.
@@ -75,23 +78,21 @@ class Surplus(core.Entity):
                 if concept != 'C1': # For concept Sets 2, 3 and 4 -> must get the second independent variable
                     var2    = info[3]
                     # read the table containing all surplus fuel weights per ac. Those which had no surplus fuel taken, surplus_weight = 0.
-                    # So the surplus of all concept sets in the same folder.
-                    filename = '\surplus_fuels_'+FUA+'_'+concept+'_'+var1+'_'+var2+'.csv'
+                    # To do this, the surplus fuels .csv files of all concepts must be in the same folder.
+                    filename = '\\surplus_fuels_'+FUA+'_'+concept+'_'+var1+'_'+var2+'.csv'
                 else:
-                    filename = '\surplus_fuels_'+FUA+'_'+concept+'_'+var1+'.csv' # concept 1
+                    filename = '\\surplus_fuels_'+FUA+'_'+concept+'_'+var1+'.csv' # concept 1
 
-            # For the baselines
+            # For the baseline
             elif concept == 'B':
-                filename = '\surplus_fuels_' + fua + '_' + concept + '.csv'
+                filename = '\\surplus_fuels_' + fua + '_' + concept + '.csv'
 
             else:
                 sys.exit('A wrong plannability command has been input')
 
             # Read the corresponding table of surplus fuel
-            surplus_fuel_table = pd.read_csv(
-                r"C:\Users\rodri\Documents\GitHub\bluesky\plugins\surplus_fuels" + filename)
-            print('surplus table found')
-
+            surplus_fuel_table = pd.read_csv(current_path + "\\plugins\\surplus_fuels" + filename)
+            print('Surplus table found')
 
     def create(self, n=1):
         ''' This function gets called automatically when new aircraft are created. '''
@@ -102,7 +103,7 @@ class Surplus(core.Entity):
         # Get the acid (ECTRL ID, unique identifier) and find this in the table
         acid = traf.id[-n:][0]
 
-        val = False
+        #val = False
 
         if val == False:
             row = surplus_fuel_table[surplus_fuel_table['ECTRL ID'] == int(acid)] #acid is read as str, table is in int.
@@ -128,16 +129,11 @@ class Surplus(core.Entity):
             sys.exit('Flight found in surplus_fuels_table multiple times')
             # This should not occur, so use it only as flag
 
-
         #print(acid, current_mass, traf.perf.mass[-n:][0]) # verification
 
-
-
-    ## THIS IS ALSO NOT NEEDED. Just for verification to show that the increased fuel indeed stays
-    # Functions that need to be called periodically can be indicated to BlueSky
-    # with the timed_function decorator
+    ## The following function is not needed, just used to verify that the increased weight remains in the next steps
     @core.timed_function(name='surplus', dt=5)
-    def update(self): ## Function to do smth periodically
+    def update(self):
         ''' Periodic update function for our example entity. '''
 
         #print(traf.perf.mass)
