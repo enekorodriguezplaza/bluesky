@@ -11,6 +11,7 @@ Note: to run this plugin, 'surplus' must be added to the list of plugins in sett
 
 Author: Eneko Rodriguez
 """
+
 from random import randint
 import numpy as np
 import pandas as pd
@@ -32,8 +33,8 @@ def init_plugin():
     surplus = Surplus()
     # Configuration parameters
     config = {
-        'plugin_name':     'surplus', # name (must be added to the enabled_plugins list of settings.cfg
-        'plugin_type':     'sim' # This is a simulation plugin
+        'plugin_name':     'surplus', # name (must be added to the enabled_plugins list of settings.cfg)
+        'plugin_type':     'sim'      # This is a simulation plugin
         }
     stackfunctions = { # create the command PLAN. This is called from the scns to load a specific .csv file
         'PLAN': [
@@ -55,8 +56,6 @@ class Surplus(core.Entity):
 
         global surplus_fuel_table
 
-        #val = False    # True: do validation. False: do Experiment 2
-
         if val == True:
             print('Doing validation, not Experiment 2')
             surplus_fuel_table = pd.read_csv( current_path +"\\plugins\\surplus_fuels\\val_mass.csv")
@@ -71,7 +70,7 @@ class Surplus(core.Entity):
             FUA     = info[0]
             concept = info[1]
 
-            # For the Concept Sets
+            # For the Concepts
             if 'C' in concept:
                 var1        = info[2]
 
@@ -102,8 +101,6 @@ class Surplus(core.Entity):
         # This only shows the last one, so will only work if flights are created one by one (as done in the scns)
         # Get the acid (ECTRL ID, unique identifier) and find this in the table
         acid = traf.id[-n:][0]
-
-        #val = False
 
         if val == False:
             row = surplus_fuel_table[surplus_fuel_table['ECTRL ID'] == int(acid)] #acid is read as str, table is in int.
