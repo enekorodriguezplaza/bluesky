@@ -25,7 +25,7 @@ import sys
 
 current_path = os.getcwd() # now it shows as the current path (\plugins), but when entering the code it becomes the parent
 
-val = False
+val = True
 
 ### Initialization function of the plugin.
 def init_plugin():
@@ -55,7 +55,7 @@ class Surplus(core.Entity):
     def choose_plannability_csv(self, *args):
 
         global surplus_fuel_table
-
+        val = True
         if val == True:
             print('Doing validation, not Experiment 2')
             surplus_fuel_table = pd.read_csv( current_path +"\\plugins\\surplus_fuels\\val_mass.csv")
@@ -84,7 +84,7 @@ class Surplus(core.Entity):
 
             # For the baseline
             elif concept == 'B':
-                filename = '\\surplus_fuels_' + fua + '_' + concept + '.csv'
+                filename = '\\surplus_fuels_' + FUA + '_' + concept + '.csv'
 
             else:
                 sys.exit('A wrong plannability command has been input')
