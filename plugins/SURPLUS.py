@@ -1,6 +1,6 @@
 """ BlueSky SURPLUS plugin
-This plugin reads a list containing information on the surplus fuel needed for each aircraft to take, based on the plannability concept
-The csv is chosen out of the ones created in the file plan.ipynb, and is read as a pandas DataFrame
+This plugin reads a csv containing information on the surplus fuel needed for each aircraft to take, based on the plannability concept
+The csv is chosen out of the ones created in the file plan.ipynb, and is read as a pandas DataFrame. Place these csv files in bluesky/surplus_fuels/ for them to be read
 Once an aircraft is created, this list is checked and the corresponding surplus fuel added.
 Note: every flight adds some surplus fuel. If the surplus weight == 0: this is because the flight did not take a surplus fuel
 Once the surplus fuel is added, it remains for the rest of the simulation (core timed function)
@@ -25,7 +25,7 @@ import sys
 
 current_path = os.getcwd() # now it shows as the current path (\plugins), but when entering the code it becomes the parent
 
-val = True
+val = False # True: do validation. False: do Experiment 2. calling a batch that does not correspond will yield an error.
 
 ### Initialization function of the plugin.
 def init_plugin():
@@ -55,7 +55,7 @@ class Surplus(core.Entity):
     def choose_plannability_csv(self, *args):
 
         global surplus_fuel_table
-        val = True
+
         if val == True:
             print('Doing validation, not Experiment 2')
             surplus_fuel_table = pd.read_csv( current_path +"\\plugins\\surplus_fuels\\val_mass.csv")
